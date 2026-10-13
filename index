@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>授業用 くじ引き＆自動読み上げアプリ</title>
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            color: #1e3a8a;
+            font-size: 1.8rem;
+        }
+
+        .setup-section {
+            background-color: #f1f5f9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-sizing: border-box;
+            font-size: 0.9rem;
+            resize: vertical;
+        }
+
+        .file-input-wrapper {
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: #2563eb;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-draw {
+            background-color: #ef4444;
+            font-size: 1.8rem;
+            padding: 18px 40px;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-draw:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-draw:disabled {
+            background-color: #94a3b8;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .result-display {
+            margin-top: 30px;
+            padding: 30px;
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            text-align: center;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #fff;
+        }
+
+        .comment-box {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #d97706;
+            margin-bottom: 15px;
+            line-height: 1.4;
+            word-break: break-all;
+        }
+
+        .name-box {
+            font-size: 2.8rem;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        .number-tag {
+            background-color: #e0f2fe;
+            color: #0369a1;
+            padding: 4px 16px;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+
+        .status {
+            font-size: 0.9rem;
+            color: #64748b;
+            text-align: right;
+            margin-top: 5px;
+        }
+
+        .options {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        /* アニメーション用クラス */
+        .roulette {
+            animation: pulse 0.1s infinite alternate;
+            opacity: 0.7;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.99); }
+            100% { transform: scale(1.01); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎲 数学授業 指名くじ引き</h1>
+
+    <div class="setup-section">
+        <label for="dataInput"><strong>データ入力（スプレッドシートから列ごとコピー＆ペースト）:</strong></label>
+        <p style="font-size: 0.85rem; color: #475569; margin: 4px 0 8px 0;">
+            ※「出席番号」「氏名」「一言コメント」の3列を選択してそのまま下に貼り付けてください。<br>
+            ※Googleフォーム連携スプレッドシートのCSVファイルを直接読み込むこともできます。
+        </p>
+        <textarea id="dataInput" placeholder="1	山田 太郎	微分積分がんばります&#10;2	佐藤 花子	三角関数が得意です"></textarea>
+        
+        <div class="file-input-wrapper">
+            <input type="file" id="csvFile" accept=".csv, .tsv, .txt">
+            <button class="btn" onclick="loadData()">データを読み込む</button>
+        </div>
+        
+        <div class="controls">
+            <div class="status" id="dataCount">登録件数: 0 件</div>
+            <div class="options">
+                <label><input type="checkbox" id="preventDuplicate" checked> 一度当たった人を除外する</label>
+            </div>
+        </div>
+    </div>
+
+    <button id="drawBtn" class="btn btn-draw" onclick="startDraw()" disabled>抽選スタート！</button>
+
+    <div class="result-display" id="resultCard">
+        <div class="comment-box" id="displayComment">「一言コメントがここに表示されます」</div>
+        <div class="name-box" id="displayName"><span class="number-tag">■番</span> 氏名</div>
+    </div>
+</div>
+
+<script>
+    let studentList = [];
+    let remainingIndices = [];
+    let isDrawing = false;
+
+    // データ読み込み（テキストエリアまたはCSVファイル）
+    function loadData() {
+        const text = document.getElementById('dataInput').value.trim();
+        if (!text) {
+            alert("データを貼り付けるかファイルを選択してください。");
+            return;
+        }
+
+        const lines = text.split(/\r?\n/);
+        studentList = [];
+
+        lines.forEach(line => {
+            // タブまたはカンマ区切りでパース（ダブルクォーテーションの簡易除去含む）
+            const cols = line.split(/[\t,]/).map(col => col.trim().replace(/^["']|["']\$/g, ''));
+            
+            // Googleフォーム連携スプレッドシート（タイムスタンプ含む4列）にも自動対応
+            // 形式判別: [タイムスタンプ, 番号, 氏名, コメント] または [番号, 氏名, コメント]
+            if (cols.length >= 4) {
+                studentList.push({ number: cols[1], name: cols[2], comment: cols[3] });
+            } else if (cols.length >= 3) {
+                studentList.push({ number: cols[0], name: cols[1], comment: cols[2] });
+            }
+        });
+
+        // ヘッダー行（「出席番号」等の文字列）が入っていたら除外
+        if (studentList.length > 0 && isNaN(parseInt(studentList[0].number))) {
+            studentList.shift();
+        }
+
+        if (studentList.length === 0) {
+            alert("有効な生徒データが見つかりませんでした。形式を確認してください。");
+            return;
+        }
+
+        resetDrawPool();
+        document.getElementById('drawBtn').disabled = false;
+        alert(`${studentList.length} 名のデータを読み込みました！`);
+    }
+
+    // ファイル選択時の自動処理
+    document.getElementById('csvFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('dataInput').value = e.target.result;
+            loadData();
+        };
+        reader.readAsText(file);
+    });
+
+    // くじ引きプールのリセット
+    function resetDrawPool() {
+        remainingIndices = studentList.map((_, index) => index);
+        updateStatus();
+    }
+
+    function updateStatus() {
+        document.getElementById('dataCount').innerText = `残り対象者: ${remainingIndices.length} / 全体: ${studentList.length} 人`;
+    }
+
+    // 抽選スタート
+    function startDraw() {
+        if (isDrawing) return;
+
+        if (remainingIndices.length === 0) {
+            alert("全員の抽選が完了しました！リストを再読み込みします。");
+            resetDrawPool();
+            return;
+        }
+
+        isDrawing = true;
+        document.getElementById('drawBtn').disabled = true;
+
+        const displayComment = document.getElementById('displayComment');
+        const displayName = document.getElementById('displayName');
+        const resultCard = document.getElementById('resultCard');
+
+        resultCard.classList.add('roulette');
+
+        // ドラムロール演出（表示をパラパラ切り替える）
+        let counter = 0;
+        const interval = setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * remainingIndices.length);
+            const tempStudent = studentList[remainingIndices[randomIndex]];
+            displayComment.innerText = `「${tempStudent.comment || "コメントなし"}」`;
+            displayName.innerHTML = `<span class="number-tag">${tempStudent.number}番</span> ${tempStudent.name}`;
+            counter++;
+            if (counter > 20) {
+                clearInterval(interval);
+                finalizeDraw();
+            }
+        }, 80);
+    }
+
+    // 抽選決定・読み上げ
+    function finalizeDraw() {
+        const resultCard = document.getElementById('resultCard');
+        resultCard.classList.remove('roulette');
+
+        // ランダムに1人選出
+        const poolIndex = Math.floor(Math.random() * remainingIndices.length);
+        const selectedStudentIndex = remainingIndices[poolIndex];
+        const student = studentList[selectedStudentIndex];
+
+        // 重複除外の設定があれば配列から削除
+        if (document.getElementById('preventDuplicate').checked) {
+            remainingIndices.splice(poolIndex, 1);
+        }
+
+        // 画面描画
+        const commentText = student.comment ? `「${student.comment}」` : "「無言のプレッシャー」";
+        document.getElementById('displayComment').innerText = commentText;
+        document.getElementById('displayName').innerHTML = `<span class="number-tag">${student.number}番</span> ${student.name}`;
+
+        updateStatus();
+
+        // 音声読み上げテキストの構築
+        // 例：「三角関数が得意です。12番、山田 太郎さん！」
+        const speakComment = student.comment ? `${student.comment}。` : '';
+        const speechText = `${speakComment}${student.number}番、${student.name}さん！`;
+
+        speak(speechText, () => {
+            isDrawing = false;
+            document.getElementById('drawBtn').disabled = false;
+        });
+    }
+
+    // Web Speech API による音声読み上げ
+    function speak(text, onEndCallback) {
+        if (!('speechSynthesis' in window)) {
+            alert("お使いのブラウザは音声読み上げに対応していません。");
+            if (onEndCallback) onEndCallback();
+            return;
+        }
+
+        // 実行中の読み上げがあればキャンセル
+        window.speechSynthesis.cancel();
+
+        const uttr = new SpeechSynthesisUtterance(text);
+        uttr.lang = 'ja-JP';
+        uttr.rate = 1.0; // 読み上げ速度 (0.5〜2.0)
+        uttr.pitch = 1.1; // 声の高さ (少し明るめに設定)
+
+        uttr.onend = function() {
+            if (onEndCallback) onEndCallback();
+        };
+
+        uttr.onerror = function() {
+            if (onEndCallback) onEndCallback();
+        };
+
+        window.speechSynthesis.speak(uttr);
+    }
+</script>
+
+</body>
+</html>
